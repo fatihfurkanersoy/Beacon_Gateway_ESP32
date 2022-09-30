@@ -75,20 +75,39 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       // MQTT ALL
       //------------------------------------------------
 
-      mqtt.connect(MQTTID, mqttUsername, mqttPassword);
+      if (!mqtt.connected())
+      {
+        if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
+        {
+
+          StaticJsonDocument<512> Message;
+          Message["MAC"] = mac_id_;
+          Message["RSSI"] = advertisedDevice.getRSSI();
+          Message["Manufacture"] = pHex;
+          char JSONmessageBuffer[200];
+          serializeJsonPretty(Message, JSONmessageBuffer);
+          Serial.println("JSONmessageBuffer");
+          Serial.println(JSONmessageBuffer);
+          if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
+          {
+            Serial.println("Success sending message");
+          }
+          else
+          {
+            Serial.println("Error sending message");
+          }
+        }
+        else
+        {
+          Serial.print("[FAILED] [ rc = ");
+          Serial.print(mqtt.state());
+        }
+      }
 
       //------------------------------------------------
       //------------------------------------------------
       // MQTT JSON DATA
-      StaticJsonDocument<512> Message;
-      Message["MAC"] = mac_id_;
-      Message["RSSI"] = advertisedDevice.getRSSI();
-      Message["Manufacture"] = pHex;
-      char JSONmessageBuffer[200];
-      serializeJsonPretty(Message, JSONmessageBuffer);
-      mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer);
-      Serial.println("JSONmessageBuffer");
-      Serial.println(JSONmessageBuffer);
+
       free(pHex);
     }
   }
@@ -97,15 +116,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Scanning...");
-
-  BLEDevice::init("");
-  pBLEScan = BLEDevice::getScan(); // create new scan
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setActiveScan(true); // active scan uses more power, but get results faster
-  pBLEScan->setInterval(100);
-  pBLEScan->setWindow(99); // less or equal setInterval value
-
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   for (int i = 0; i <= 5000; i++)
@@ -125,18 +135,25 @@ void setup()
   Serial.println();
 
   mqtt.setServer(broker, MQTT_PORT);
+
+  BLEDevice::init("");
+  pBLEScan = BLEDevice::getScan(); // create new scan
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setActiveScan(true); // active scan uses more power, but get results faster
+  pBLEScan->setInterval(100);
+  pBLEScan->setWindow(99); // less or equal setInterval value
 }
 
 void loop()
 {
 
-  long now = millis();
-  if (now - lastMsg > 30000)
-  {
-    lastMsg = now;
-    BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
-    pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
-  }
+  // long now = millis();
+  // if (now - lastMsg > 30000)
+  //{
+  // lastMsg = now;
+  BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
+  pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
+  //}
 
   mqtt.loop();
 }
