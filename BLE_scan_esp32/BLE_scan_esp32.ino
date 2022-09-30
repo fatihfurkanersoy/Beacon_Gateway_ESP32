@@ -29,6 +29,7 @@ const char *mqttUsername = "Gateway_username"; // MQTT username
 const char *mqttPassword = "Gateway_password"; // MQTT password
 const char *MQTTID = "Gateway_ID";
 unsigned long lastMsg = 0;
+unsigned long lastMsg2 = 0;
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
@@ -39,7 +40,7 @@ char mac_id_[13] = "FFFFFFFFFFFF";
 //------------------------------------------------
 int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
-
+char JSONmessageBuffer[200];
 String BLE_device_ID = "dontfound";
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
@@ -74,39 +75,35 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       //------------------------------------------------
       // MQTT ALL
       //------------------------------------------------
+      StaticJsonDocument<512> Message;
+      Message["MAC"] = mac_id_;
+      Message["RSSI"] = advertisedDevice.getRSSI();
+      Message["Manufacture"] = pHex;
 
-      if (!mqtt.connected())
-      {
-        if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
-        {
-
-          StaticJsonDocument<512> Message;
-          Message["MAC"] = mac_id_;
-          Message["RSSI"] = advertisedDevice.getRSSI();
-          Message["Manufacture"] = pHex;
-          char JSONmessageBuffer[200];
-          serializeJsonPretty(Message, JSONmessageBuffer);
-          Serial.println("JSONmessageBuffer");
-          Serial.println(JSONmessageBuffer);
-          if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
-          {
-            Serial.println("Success sending message");
-          }
-          else
-          {
-            Serial.println("Error sending message");
-          }
-        }
-        else
-        {
-          Serial.print("[FAILED] [ rc = ");
-          Serial.print(mqtt.state());
-        }
-      }
+      serializeJsonPretty(Message, JSONmessageBuffer);
+      Serial.println("JSONmessageBuffer");
+      Serial.println(JSONmessageBuffer);
 
       //------------------------------------------------
       //------------------------------------------------
       // MQTT JSON DATA
+      if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
+      {
+
+        if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
+        {
+          Serial.println("Success sending message");
+        }
+        else
+        {
+          Serial.println("Error sending message");
+        }
+      }
+      else
+      {
+        Serial.print("[FAILED] [ rc = ");
+        Serial.print(mqtt.state());
+      }
 
       free(pHex);
     }
@@ -147,13 +144,19 @@ void setup()
 void loop()
 {
 
-  // long now = millis();
-  // if (now - lastMsg > 30000)
-  //{
-  // lastMsg = now;
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
-  pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
-  //}
+  long now = millis();
+  if (now - lastMsg > 10000)
+  {
+    lastMsg = now;
+    BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
+    pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
+  }
+
+  long now2 = millis();
+  if (now2 - lastMsg2 > 20000)
+  {
+    lastMsg2 = now2;
+  }
 
   mqtt.loop();
 }
