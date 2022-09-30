@@ -87,23 +87,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       //------------------------------------------------
       //------------------------------------------------
       // MQTT JSON DATA
-      if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
-      {
-
-        if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
-        {
-          Serial.println("Success sending message");
-        }
-        else
-        {
-          Serial.println("Error sending message");
-        }
-      }
-      else
-      {
-        Serial.print("[FAILED] [ rc = ");
-        Serial.print(mqtt.state());
-      }
 
       free(pHex);
     }
@@ -156,6 +139,23 @@ void loop()
   if (now2 - lastMsg2 > 20000)
   {
     lastMsg2 = now2;
+    if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
+    {
+
+      if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
+      {
+        Serial.println("Success sending message");
+      }
+      else
+      {
+        Serial.println("Error sending message");
+      }
+    }
+    else
+    {
+      Serial.print("[FAILED] [ rc = ");
+      Serial.print(mqtt.state());
+    }
   }
 
   mqtt.loop();
