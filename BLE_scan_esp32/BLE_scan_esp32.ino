@@ -8,6 +8,35 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
+#include <PubSubClient.h> //MQTT
+#include <ArduinoJson.h>  //JSON
+
+// For OTA
+#include <WiFi.h>
+#include <WiFiClient.h>
+
+// OTA ALL DEFINE
+//--------------------------------------------------
+const char *host = "Test_Beacon";
+const char *ssid = "Test_Beacon";
+const char *password = "Beacon_Test";
+
+//-------------------------------------------------
+//-------------------------------------------------
+const char *broker = "194.31.59.188";          // MQTT hostname
+int MQTT_PORT = 1883;                          // MQTT Port
+const char *mqttUsername = "Gateway_username"; // MQTT username
+const char *mqttPassword = "Gateway_password"; // MQTT password
+const char *MQTTID = "Gateway_ID";
+unsigned long lastMsg = 0;
+
+WiFiClient wifiClient;
+PubSubClient mqtt(wifiClient);
+
+char mac_add_all[136];
+char mac_id_[13] = "FFFFFFFFFFFF";
+//------------------------------------------------
+//------------------------------------------------
 int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
 
@@ -20,9 +49,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
     BLE_device_ID = advertisedDevice.getName().c_str();
     if (BLE_device_ID == "mcz")
     {
-
-      char mac_add_all[136];
-      char mac_id_[13] = "FFFFFFFFFFFF";
 
       sprintf(mac_add_all, "%s", advertisedDevice.getAddress().toString().c_str());
       mac_id_[0] = mac_add_all[0];
@@ -43,7 +69,26 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
       // ManufacturerData'nın tamamını burada alıyoruz
       char *pHex = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice.getManufacturerData().data(), advertisedDevice.getManufacturerData().length());
-      Serial.printf("manufacture: %s \n", pHex);
+      Serial.printf("manufacture: %s \n \n \n", pHex);
+
+      //------------------------------------------------
+      // MQTT ALL
+      //------------------------------------------------
+
+      mqtt.connect(MQTTID, mqttUsername, mqttPassword);
+
+      //------------------------------------------------
+      //------------------------------------------------
+      // MQTT JSON DATA
+      StaticJsonDocument<512> Message;
+      Message["MAC"] = mac_id_;
+      Message["RSSI"] = advertisedDevice.getRSSI();
+      Message["Manufacture"] = pHex;
+      char JSONmessageBuffer[200];
+      serializeJsonPretty(Message, JSONmessageBuffer);
+      mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer);
+      Serial.println("JSONmessageBuffer");
+      Serial.println(JSONmessageBuffer);
       free(pHex);
     }
   }
@@ -60,12 +105,38 @@ void setup()
   pBLEScan->setActiveScan(true); // active scan uses more power, but get results faster
   pBLEScan->setInterval(100);
   pBLEScan->setWindow(99); // less or equal setInterval value
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  for (int i = 0; i <= 5000; i++)
+  { // döngü başladı
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      Serial.print(".");
+    }
+  }
+
+  Serial.println();
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("Connected with IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  mqtt.setServer(broker, MQTT_PORT);
 }
 
 void loop()
 {
-  // put your main code here, to run repeatedly:
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-  pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
-  delay(2000);
+
+  long now = millis();
+  if (now - lastMsg > 30000)
+  {
+    lastMsg = now;
+    BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
+    pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
+  }
+
+  mqtt.loop();
 }
