@@ -29,8 +29,8 @@ const char *mqttUsername = "Gateway_username"; // MQTT username
 const char *mqttPassword = "Gateway_password"; // MQTT password
 const char *MQTTID = "Gateway_ID";
 unsigned long lastMsg = 0;
-unsigned long lastMsg2 = 0;
 
+char *pHex = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
@@ -38,10 +38,10 @@ char mac_add_all[136];
 char mac_id_[13] = "FFFFFFFFFFFF";
 //------------------------------------------------
 //------------------------------------------------
-int scanTime = 5; // In seconds
+int scanTime = 8; // In seconds
 BLEScan *pBLEScan;
 char JSONmessageBuffer[200];
-String BLE_device_ID = "dontfound";
+String BLE_device_ID = "notfoundxx";
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
@@ -65,34 +65,33 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       mac_id_[10] = mac_add_all[15];
       mac_id_[11] = mac_add_all[16];
 
-      Serial.printf("MAC: %s \n", mac_id_);
-      Serial.printf("RSSI: %3d\n", advertisedDevice.getRSSI());
+      // Serial.printf("MAC: %s \n", mac_id_);
+      // Serial.printf("RSSI: %3d\n", advertisedDevice.getRSSI());
 
       // ManufacturerData'nın tamamını burada alıyoruz
-      char *pHex = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice.getManufacturerData().data(), advertisedDevice.getManufacturerData().length());
-      Serial.printf("manufacture: %s \n \n \n", pHex);
+      pHex = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice.getManufacturerData().data(), advertisedDevice.getManufacturerData().length());
+      // Serial.printf("manufacture: %s \n \n \n", pHex);
 
       //------------------------------------------------
       // MQTT ALL
       //------------------------------------------------
+      // MQTT JSON DATA
       StaticJsonDocument<512> Message;
-      Message["MAC"] = mac_id_;
-      Message["RSSI"] = advertisedDevice.getRSSI();
-      Message["Manufacture"] = pHex;
+      JsonObject veri = Message.createNestedObject("beacon"); // beacon adında daha büyük bir nesne oluşturup içine verileri koyuyoruz. Bu satırı yorum satırı yaparsak parse edilmiş halde gönderir verileri
+      veri["MAC"] = mac_id_;
+      veri["RSSI"] = advertisedDevice.getRSSI();
+      veri["Manufacture"] = pHex;
 
       serializeJsonPretty(Message, JSONmessageBuffer);
-      Serial.println("JSONmessageBuffer");
-      Serial.println(JSONmessageBuffer);
-      for (int i = 0; i < 10; i++)
+      // Serial.println(JSONmessageBuffer);
+      //------------------------------------------------
+      for (int i = 0; i < 300; i++)
       {
-        Serial.println(i);
+        // delay
       }
-
+      // MQTT Publish
+      mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer);
       //------------------------------------------------
-      //------------------------------------------------
-      // MQTT JSON DATA
-
-      free(pHex);
     }
   }
 };
@@ -132,34 +131,21 @@ void loop()
 {
 
   long now = millis();
-  if (now - lastMsg > 10000)
+  if (now - lastMsg > 20000)
   {
-    lastMsg = now;
-    BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
-    pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
-  }
-
-  long now2 = millis();
-  if (now2 - lastMsg2 > 20000)
-  {
-    lastMsg2 = now2;
     if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
     {
-
-      if (mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer) == true)
-      {
-        Serial.println("Success sending message");
-      }
-      else
-      {
-        Serial.println("Error sending message");
-      }
+      // Serial.println("Connected MQTT");
     }
     else
     {
-      Serial.print("[FAILED] [ rc = ");
-      Serial.print(mqtt.state());
+      // Serial.print("[FAILED] [ rc = ");
+      // Serial.print(mqtt.state());
     }
+
+    lastMsg = now;
+    BLEScanResults foundDevices = pBLEScan->start(scanTime, false); // put your main code here, to run repeatedly:
+    pBLEScan->clearResults();                                       // delete results fromBLEScan buffer to release memory
   }
 
   mqtt.loop();
