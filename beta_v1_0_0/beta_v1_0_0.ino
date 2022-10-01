@@ -23,13 +23,15 @@ const char *password = "Beacon_Test";
 
 //-------------------------------------------------
 //-------------------------------------------------
-const char *broker = "194.31.59.188";          // MQTT hostname
-int MQTT_PORT = 1883;                          // MQTT Port
-const char *mqttUsername = "Gateway_username"; // MQTT username
-const char *mqttPassword = "Gateway_password"; // MQTT password
+const char *broker = "api.ieasygroup.com"; // MQTT hostname
+int MQTT_PORT = 61613;                     // MQTT Port
+const char *mqttUsername = "kkmtest";      // MQTT username
+const char *mqttPassword = "testpassword"; // MQTT password
 const char *MQTTID = "Gateway_ID";
 unsigned long lastMsg = 0;
 
+String Beacon_MAC_Topic = "MAC_TOPIC_ERROR";
+char datasendtopic[50]; // Verilein gonderildiği topic
 char *pHex = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
@@ -77,10 +79,10 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       //------------------------------------------------
       // MQTT JSON DATA
       StaticJsonDocument<512> Message;
-      JsonObject veri = Message.createNestedObject("beacon"); // beacon adında daha büyük bir nesne oluşturup içine verileri koyuyoruz. Bu satırı yorum satırı yaparsak parse edilmiş halde gönderir verileri
-      veri["MAC"] = mac_id_;
-      veri["RSSI"] = advertisedDevice.getRSSI();
-      veri["Manufacture"] = pHex;
+      // JsonObject veri = Message.createNestedObject(mac_id_); // beacon adında daha büyük bir nesne oluşturup içine verileri koyuyoruz. Bu satırı yorum satırı yaparsak parse edilmiş halde gönderir verileri
+      Message["MAC"] = mac_id_;
+      Message["RSSI"] = advertisedDevice.getRSSI();
+      Message["Manufacture"] = pHex;
 
       serializeJsonPretty(Message, JSONmessageBuffer);
       // Serial.println(JSONmessageBuffer);
@@ -90,7 +92,13 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         // delay
       }
       // MQTT Publish
-      mqtt.publish("v1/devices/me/telemetry", JSONmessageBuffer);
+      Beacon_MAC_Topic = "kbeacon/publish/SogukZincir_01/"; // PUBLISH TOPIC
+      Beacon_MAC_Topic += mac_id_;
+      Beacon_MAC_Topic.toCharArray(datasendtopic, 50);
+      Serial.print("DATA SEND TOPIC (PUBLISH) : ");
+      Serial.println(datasendtopic);
+
+      mqtt.publish(datasendtopic, JSONmessageBuffer);
       //------------------------------------------------
     }
   }
@@ -135,12 +143,12 @@ void loop()
   {
     if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
     {
-      // Serial.println("Connected MQTT");
+      Serial.println("Connected MQTT");
     }
     else
     {
-      // Serial.print("[FAILED] [ rc = ");
-      // Serial.print(mqtt.state());
+      Serial.print("[FAILED] [ rc = ");
+      Serial.print(mqtt.state());
     }
 
     lastMsg = now;
