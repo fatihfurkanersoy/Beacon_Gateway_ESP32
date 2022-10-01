@@ -83,6 +83,10 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       serializeJsonPretty(Message, JSONmessageBuffer);
       Serial.println("JSONmessageBuffer");
       Serial.println(JSONmessageBuffer);
+      for (int i = 0; i < 10; i++)
+      {
+        Serial.println(i);
+      }
 
       //------------------------------------------------
       //------------------------------------------------
