@@ -40,7 +40,7 @@ char mac_add_all[136];
 char mac_id_[13] = "FFFFFFFFFFFF";
 //------------------------------------------------
 //------------------------------------------------
-int scanTime = 8; // In seconds
+int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
 char JSONmessageBuffer[200];
 String BLE_device_ID = "notfoundxx";
@@ -87,10 +87,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       serializeJsonPretty(Message, JSONmessageBuffer);
       // Serial.println(JSONmessageBuffer);
       //------------------------------------------------
-      for (int i = 0; i < 300; i++)
-      {
-        // delay
-      }
       // MQTT Publish
       Beacon_MAC_Topic = "kbeacon/publish/SogukZincir_01/"; // PUBLISH TOPIC
       Beacon_MAC_Topic += mac_id_;
@@ -139,7 +135,7 @@ void loop()
 {
 
   long now = millis();
-  if (now - lastMsg > 20000)
+  if (now - lastMsg > 60000)
   {
     if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
     {
@@ -149,6 +145,7 @@ void loop()
     {
       Serial.print("[FAILED] [ rc = ");
       Serial.print(mqtt.state());
+      ESP.restart();
     }
 
     lastMsg = now;

@@ -40,7 +40,7 @@ char mac_add_all[136];
 char mac_id_[13] = "FFFFFFFFFFFF";
 //------------------------------------------------
 //------------------------------------------------
-int scanTime = 8; // In seconds
+int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
 char JSONmessageBuffer[200];
 String BLE_device_ID = "notfoundxx";
@@ -139,7 +139,7 @@ void loop()
 {
 
   long now = millis();
-  if (now - lastMsg > 20000)
+  if (now - lastMsg > 60000)
   {
     if (mqtt.connect(MQTTID, mqttUsername, mqttPassword))
     {
@@ -149,6 +149,7 @@ void loop()
     {
       Serial.print("[FAILED] [ rc = ");
       Serial.print(mqtt.state());
+      ESP.restart();
     }
 
     lastMsg = now;
