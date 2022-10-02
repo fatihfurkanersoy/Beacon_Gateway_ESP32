@@ -1,7 +1,8 @@
 /*
-   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-   Ported to Arduino ESP32 by Evandro Copercini
-*/
+ *       Fatih Furkan
+ *    Beacon Gateway ESP32
+ *         V1_0_1
+ */
 
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -11,7 +12,6 @@
 #include <PubSubClient.h> //MQTT
 #include <ArduinoJson.h>  //JSON
 
-// For OTA
 #include <WiFi.h>
 #include <WiFiClient.h>
 
@@ -21,7 +21,6 @@ const char *host = "Test_Beacon";
 const char *ssid = "Test_Beacon";
 const char *password = "Beacon_Test";
 
-//-------------------------------------------------
 //-------------------------------------------------
 const char *broker = "api.ieasygroup.com"; // MQTT hostname
 int MQTT_PORT = 61613;                     // MQTT Port
@@ -33,12 +32,12 @@ unsigned long lastMsg = 0;
 String Beacon_MAC_Topic = "MAC_TOPIC_ERROR";
 char datasendtopic[50]; // Verilein gonderildiği topic
 char *pHex = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
 char mac_add_all[136];
 char mac_id_[13] = "FFFFFFFFFFFF";
-//------------------------------------------------
 //------------------------------------------------
 int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
@@ -52,7 +51,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
     BLE_device_ID = advertisedDevice.getName().c_str();
     if (BLE_device_ID == "mcz")
     {
-
       sprintf(mac_add_all, "%s", advertisedDevice.getAddress().toString().c_str());
       mac_id_[0] = mac_add_all[0];
       mac_id_[1] = mac_add_all[1];
@@ -67,15 +65,12 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       mac_id_[10] = mac_add_all[15];
       mac_id_[11] = mac_add_all[16];
 
-      // Serial.printf("MAC: %s \n", mac_id_);
-      // Serial.printf("RSSI: %3d\n", advertisedDevice.getRSSI());
-
       // ManufacturerData'nın tamamını burada alıyoruz
       pHex = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice.getManufacturerData().data(), advertisedDevice.getManufacturerData().length());
-      // Serial.printf("manufacture: %s \n \n \n", pHex);
 
       //------------------------------------------------
       // MQTT ALL
+
       //------------------------------------------------
       // MQTT JSON DATA
       StaticJsonDocument<512> Message;
@@ -83,14 +78,8 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       Message["MAC"] = mac_id_;
       Message["RSSI"] = advertisedDevice.getRSSI();
       Message["Manufacture"] = pHex;
-
       serializeJsonPretty(Message, JSONmessageBuffer);
-      // Serial.println(JSONmessageBuffer);
       //------------------------------------------------
-      for (int i = 0; i < 300; i++)
-      {
-        // delay
-      }
       // MQTT Publish
       Beacon_MAC_Topic = "kbeacon/publish/SogukZincir_01/"; // PUBLISH TOPIC
       Beacon_MAC_Topic += mac_id_;
@@ -117,13 +106,10 @@ void setup()
     }
   }
 
-  Serial.println();
-  Serial.println("");
-  Serial.print("Connected to ");
+  Serial.print("Connecting to");
   Serial.println(ssid);
   Serial.print("Connected with IP: ");
   Serial.println(WiFi.localIP());
-  Serial.println();
 
   mqtt.setServer(broker, MQTT_PORT);
 
